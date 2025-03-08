@@ -12,7 +12,7 @@ type QAPInstance struct {
 	DistanceMatrix [][]int
 }
 
-// ReadInstance loads a QAP problem from a file
+
 func ReadInstance(filename string) (*QAPInstance, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {

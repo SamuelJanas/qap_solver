@@ -1,35 +1,65 @@
 package main
 
 import (
-	// "fmt"
-	// "log"
-	// "os"
+	"flag"
+	"strings"
+	"time"
 	"qap_solver/internal/qap"
 	"qap_solver/internal/solvers"
 	"qap_solver/pkg"
 )
 
-// Logger setup
 var logger = pkg.NewLogger()
 
 func main() {
-	instance, err := qap.ReadInstance("instances/bur26a.dat")
-	logger.Printf("Loaded instance: Size = %d\n", instance.Size)
-	logger.Println("First row of Flow Matrix:", instance.FlowMatrix[0])
-	logger.Println("First row of Distance Matrix:", instance.DistanceMatrix[0])
+	// parse command line
+	instanceFile := flag.String("instance", "instances/bur26a.dat", "Path to instance file")
+	solverConfigs := flag.String("solvers", "random:iterations=1000", "Comma-separated list of solvers to run")
+	listSolvers := flag.Bool("list", false, "List available solvers")
+	flag.Parse()
 
+	factory := solvers.NewSolverFactory()
+
+	if *listSolvers {
+		for _, line := range factory.ListAvailable() {
+			logger.Println(line)
+		}
+		return
+	}
+
+	startTime := time.Now()
+	instance, err := qap.ReadInstance(*instanceFile)
 	if err != nil {
 		logger.Fatalf("Failed to read instance: %v", err)
 	}
+	pkg.TimeTrack(startTime, "Instance loading", logger)
 
-	// Run a random solution
-	randomSolution := solvers.RandomSolution(instance.Size)
-	fitness := qap.CalculateFitness(instance, randomSolution)
-	logger.Printf("Random solution fitness: %d", fitness)
+	logger.Printf("Loaded instance: Size = %d\n", instance.Size)
 
-	// Run Multiple Start Local Search
-	/*
-		mslsSolution := solvers.MultipleStartLocalSearch(instance, 10)
-		fitness = qap.CalculateFitness(instance, mslsSolution)
-		logger.Printf("MSLS solution fitness: %d", fitness) */
+	// Run all requested solvers
+	solverList := strings.Split(*solverConfigs, ";")
+	bestOverallSolution := solvers.SolverResult{Fitness: -1}
+
+	for _, config := range solverList {
+		solver, err := factory.Create(config)
+		if err != nil {
+			logger.Printf("Error creating solver from config '%s': %v", config, err)
+			continue
+		}
+
+		logger.Printf("Running solver: %s (%s)", solver.Name(), solver.Description())
+		startTime := time.Now()
+		result := solver.Solve(instance)
+		pkg.TimeTrack(startTime, solver.Name()+" execution", logger)
+
+		logger.Printf("%s fitness: %d", solver.Name(), result.Fitness)
+
+		if bestOverallSolution.Fitness == -1 || result.Fitness < bestOverallSolution.Fitness {
+			bestOverallSolution = result
+			logger.Printf("New best solution found by %s", solver.Name())
+		}
+	}
+
+	logger.Printf("Best overall solution has fitness: %d", bestOverallSolution.Fitness)
+	logger.Printf("Solution: %v", bestOverallSolution.Solution)
 }

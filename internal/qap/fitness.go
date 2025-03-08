@@ -1,6 +1,5 @@
 package qap
 
-// CalculateFitness evaluates the cost of a solution
 func CalculateFitness(instance *QAPInstance, solution []int) int {
 	size := instance.Size
 	totalCost := 0
