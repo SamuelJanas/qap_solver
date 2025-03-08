@@ -6,7 +6,6 @@ import (
 	"qap_solver/pkg"
 )
 
-// RandomSolver implements the random solution strategy
 type RandomSolver struct {
 	Iterations int
 }
@@ -46,7 +45,6 @@ func (s *RandomSolver) Solve(instance *qap.QAPInstance) SolverResult {
 	}
 }
 
-// Generate a random solution (random permutation)
 func RandomSolution(size int) []int {
 	solution := make([]int, size)
 	for i := range solution {

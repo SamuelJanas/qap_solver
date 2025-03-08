@@ -5,14 +5,12 @@ import (
 	"qap_solver/internal/qap"
 )
 
-// LocalSearchSolver implements a basic local search strategy with swaps
 type LocalSearchSolver struct {
 	MaxIterations  int
 	MaxNonImproving int
 	RandomRestarts int
 }
 
-// NewLocalSearchSolver creates a new local search solver
 func NewLocalSearchSolver(maxIterations, maxNonImproving, randomRestarts int) *LocalSearchSolver {
 	return &LocalSearchSolver{
 		MaxIterations:   maxIterations,
@@ -30,7 +28,7 @@ func (s *LocalSearchSolver) Description() string {
 		s.MaxIterations, s.MaxNonImproving, s.RandomRestarts)
 }
 
-// Solve runs the local search algorithm
+
 func (s *LocalSearchSolver) Solve(instance *qap.QAPInstance) SolverResult {
 	bestSolution := make([]int, instance.Size)
 	bestFitness := -1

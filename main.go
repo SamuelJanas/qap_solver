@@ -14,7 +14,8 @@ var logger = pkg.NewLogger()
 func main() {
 	// parse command line
 	instanceFile := flag.String("instance", "instances/bur26a.dat", "Path to instance file")
-	solverConfigs := flag.String("solvers", "random:iterations=1000", "Comma-separated list of solvers to run")
+	solverConfigs := flag.String("solvers", "random:iterations=1000", "See README or baseline for more info." +
+	"separate solvers by ; and arguments with ,. List arguments after :")
 	listSolvers := flag.Bool("list", false, "List available solvers")
 	flag.Parse()
 
