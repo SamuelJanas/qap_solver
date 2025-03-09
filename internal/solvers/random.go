@@ -52,7 +52,6 @@ func (s *RandomSolver) SolveWithMetrics(
 	metricsCollector *metrics.MetricsCollector,
 	instanceName string,
 	runNumber int,
-	optimalFitness int,
 	) SolverResult {
 	startTime := time.Now()
 
@@ -96,7 +95,6 @@ func (s *RandomSolver) SolveWithMetrics(
 			Run:              runNumber,
 			InitialFitness:   initialFitness,
 			FinalFitness:     bestFitness,
-			OptimalFitness:   optimalFitness,
 			TimeElapsed:      elapsedTime,
 			StepsCount:       totalSteps,
 			EvaluationsCount: totalEvaluations,

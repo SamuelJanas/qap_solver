@@ -21,7 +21,6 @@ func NewSolverFactory() *SolverFactory {
 	// Register the built-in solvers
 	factory.Register("random", factory.createRandomSolver)
 	factory.Register("localsearch", factory.createLocalSearchSolver)
-	factory.Register("steepest", factory.createSteepestLocalSearchSolver)
 
 	return factory
 }
@@ -57,7 +56,6 @@ func (f *SolverFactory) ListAvailable() []string {
 	result = append(result, "Available solvers:")
 	result = append(result, "  random:iterations=N - Random solution generator with N iterations")
 	result = append(result, "  localsearch:maxIter=N,maxNonImproving=M,restarts=R - Local search with parameters")
-	result = append(result, "  steepestlocalsearch:maxIter=N,maxNonImproving=M,restarts=R")
 
 	return result
 }
@@ -124,39 +122,4 @@ func (f *SolverFactory) createLocalSearchSolver(args []string) (Solver, error) {
 	}
 
 	return NewLocalSearchSolver(maxIterations, maxNonImproving, randomRestarts), nil
-}
-
-func (f *SolverFactory) createSteepestLocalSearchSolver(args []string) (Solver, error) {
-	// defaults
-	maxIterations := 10000
-	maxNonImproving := 1000
-	randomRestarts := 5
-
-	// Process arguments
-	for _, arg := range args {
-		parts := strings.SplitN(arg, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.ToLower(parts[0])
-		value := parts[1]
-
-		switch key {
-		case "maxiter":
-			if i, err := strconv.Atoi(value); err == nil && i > 0 {
-				maxIterations = i
-			}
-		case "maxnonimproving":
-			if i, err := strconv.Atoi(value); err == nil && i > 0 {
-				maxNonImproving = i
-			}
-		case "restarts":
-			if i, err := strconv.Atoi(value); err == nil && i >= 0 {
-				randomRestarts = i
-			}
-		}
-	}
-
-	return NewSteepestLocalSearchSolver(maxIterations, maxNonImproving, randomRestarts), nil
 }

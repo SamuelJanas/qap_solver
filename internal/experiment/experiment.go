@@ -13,6 +13,7 @@ import (
 
 // ExperimentConfig holds configuration for running experiments
 type ExperimentConfig struct {
+	InstanceSample  int
 	InstancesDir    string
 	OutputDir       string
 	Solvers         []solvers.Solver
@@ -24,17 +25,6 @@ type ExperimentConfig struct {
 func RunAll(config ExperimentConfig) error {
 	// Create metrics collector
 	metricsCollector := metrics.NewMetricsCollector(config.OutputDir)
-
-	// Load optimal solutions if available
-	var optimals qap.OptimalSolutions
-	var err error
-	optimals, err = qap.LoadOptimalSolutions(config.InstancesDir)
-	if err != nil {
-		config.Logger.Printf("Warning: Could not load optimal solutions: %v", err)
-		optimals = make(qap.OptimalSolutions)
-	} else {
-		optimals = make(qap.OptimalSolutions)
-	}
 
 	// Get list of instance files
 	instanceFiles, err := findInstanceFiles(config.InstancesDir)
@@ -48,6 +38,15 @@ func RunAll(config ExperimentConfig) error {
 
 	config.Logger.Printf("Found %d instance files", len(instanceFiles))
 
+	if config.InstanceSample > len(instanceFiles) {
+		return fmt.Errorf("sample was provided, but sample exceeds the total number of instance files")
+	}
+
+	if config.InstanceSample > 0 {
+		config.Logger.Printf("Using only first %d instances", config.InstanceSample)
+		instanceFiles = instanceFiles[:config.InstanceSample]
+	}
+
 	// Process each instance
 	for _, instanceFile := range instanceFiles {
 		instanceName := filepath.Base(instanceFile)
@@ -60,9 +59,6 @@ func RunAll(config ExperimentConfig) error {
 			continue
 		}
 
-		// Get optimal solution if available
-		optimalFitness := optimals.GetOptimalSolution(instanceName)
-
 		// Run each solver multiple times
 		for _, solver := range config.Solvers {
 			config.Logger.Printf("Running %s on %s (%d runs)", solver.Name(), instanceName, config.RunsPerInstance)
@@ -73,7 +69,7 @@ func RunAll(config ExperimentConfig) error {
 
 				// Check if the solver supports metrics collection
 				if metricsSolver, ok := solver.(MetricsSolver); ok {
-					metricsSolver.SolveWithMetrics(instance, metricsCollector, instanceName, run, optimalFitness)
+					metricsSolver.SolveWithMetrics(instance, metricsCollector, instanceName, run)
 				} else {
 					// Run standard solver and collect basic metrics
 					result := solver.Solve(instance)
@@ -97,7 +93,7 @@ func RunAll(config ExperimentConfig) error {
 type MetricsSolver interface {
 	solvers.Solver
 	SolveWithMetrics(instance *qap.QAPInstance, metricsCollector *metrics.MetricsCollector,
-		instanceName string, runNumber int, optimalFitness int) solvers.SolverResult
+		instanceName string, runNumber int) solvers.SolverResult
 }
 
 // Helper function to find all instance files in a directory

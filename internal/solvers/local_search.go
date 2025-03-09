@@ -2,7 +2,9 @@ package solvers
 
 import (
 	"fmt"
+	"qap_solver/internal/metrics"
 	"qap_solver/internal/qap"
+	"time"
 )
 
 type LocalSearchSolver struct {
@@ -88,3 +90,97 @@ func (s *LocalSearchSolver) Solve(instance *qap.QAPInstance) SolverResult {
 		Fitness:  bestFitness,
 	}
 }
+
+
+func (s *LocalSearchSolver) SolveWithMetrics(
+    instance *qap.QAPInstance,
+    metricsCollector *metrics.MetricsCollector,
+    instanceName string,
+    runNumber int,
+) SolverResult {
+    startTime := time.Now()
+
+    bestSolution := make([]int, instance.Size)
+    bestFitness := -1
+
+    totalSteps := 0
+    totalEvaluations := 0
+    totalSolutionsChecked := 0
+
+    var initialSolution []int
+    var initialFitness int
+
+    for restart := 0; restart < s.RandomRestarts; restart++ {
+        currentSolution := RandomSolution(instance.Size)
+        currentFitness := qap.CalculateFitness(instance, currentSolution)
+
+        if restart == 0 {
+            initialSolution = make([]int, len(currentSolution))
+            copy(initialSolution, currentSolution)
+            initialFitness = currentFitness
+        }
+
+        nonImprovingCount := 0
+
+        for iter := 0; iter < s.MaxIterations && nonImprovingCount < s.MaxNonImproving; iter++ {
+            improved := false
+
+            for i := 0; i < instance.Size-1; i++ {
+                for j := i + 1; j < instance.Size; j++ {
+                    newSolution := make([]int, instance.Size)
+                    copy(newSolution, currentSolution)
+                    newSolution[i], newSolution[j] = newSolution[j], newSolution[i]
+
+                    newFitness := qap.CalculateFitness(instance, newSolution)
+                    totalEvaluations++
+                    totalSolutionsChecked++
+
+                    if newFitness < currentFitness {
+                        copy(currentSolution, newSolution)
+                        currentFitness = newFitness
+                        improved = true
+                        break
+                    }
+                }
+                if improved {
+                    break
+                }
+            }
+
+            totalSteps++
+            if !improved {
+                nonImprovingCount++
+            } else {
+                nonImprovingCount = 0
+            }
+        }
+
+        if bestFitness == -1 || currentFitness < bestFitness {
+            copy(bestSolution, currentSolution)
+            bestFitness = currentFitness
+        }
+    }
+
+    elapsedTime := time.Since(startTime)
+
+    if metricsCollector != nil {
+        metricsCollector.AddRunMetrics(metrics.RunMetrics{
+            InstanceName:     instanceName,
+            SolverName:       s.Name(),
+            Run:              runNumber,
+            InitialFitness:   initialFitness,
+            FinalFitness:     bestFitness,
+            TimeElapsed:      elapsedTime,
+            StepsCount:       totalSteps,
+            EvaluationsCount: totalEvaluations,
+            SolutionsChecked: totalSolutionsChecked,
+            Solution:         bestSolution,
+        })
+    }
+
+    return SolverResult{
+        Solution: bestSolution,
+        Fitness:  bestFitness,
+    }
+}
+

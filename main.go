@@ -21,6 +21,7 @@ func main() {
 	solverConfigs := flag.String("solvers", "random:iterations=1000", "See README or baseline for more info. "+
 		"Separate solvers by ; and arguments with ,. List arguments after :")
 	runsPerInstance := flag.Int("runs", 10, "Number of runs per solver per instance")
+	sample := flag.Int("sample", -1, "if positive, number of instances to include in the experiment")
 	experimentMode := flag.Bool("experiment", false, "Run in experiment mode (batch processing)")
 	singleInstanceFile := flag.String("instance", "", "Path to a single instance file (ignored in experiment mode)")
 	listSolvers := flag.Bool("list", false, "List available solvers")
@@ -108,6 +109,7 @@ func main() {
 		// Run batch experiment on all instances
 		err := experiment.RunAll(experiment.ExperimentConfig{
 			InstancesDir:    *instanceDir,
+			InstanceSample:  *sample,
 			OutputDir:       *outputDir,
 			Solvers:         solverInstances,
 			RunsPerInstance: *runsPerInstance,
