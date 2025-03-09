@@ -54,8 +54,8 @@ func (f *SolverFactory) ListAvailable() []string {
 	var result []string
 
 	result = append(result, "Available solvers:")
-	result = append(result, "  random:iterations=N - Random solution generator with N iterations")
-	result = append(result, "  localsearch:maxIter=N,maxNonImproving=M,restarts=R - Local search with parameters")
+	result = append(result, "  random:iterations=1000 - Random solution generator with 1000 iterations")
+	result = append(result, "  localsearch:maxIter=10000,maxNonImproving=1000,restarts=5 - Local search with parameters")
 
 	return result
 }
