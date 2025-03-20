@@ -21,6 +21,7 @@ func NewSolverFactory() *SolverFactory {
 	// Register the built-in solvers
 	factory.Register("random", factory.createRandomSolver)
 	factory.Register("localsearch", factory.createLocalSearchSolver)
+	factory.Register("nearestneighbor", factory.createNearestNeighborSolver)
 
 	return factory
 }
@@ -56,6 +57,7 @@ func (f *SolverFactory) ListAvailable() []string {
 	result = append(result, "Available solvers:")
 	result = append(result, "  random:iterations=1000 - Random solution generator with 1000 iterations")
 	result = append(result, "  localsearch:maxIter=10000,maxNonImproving=1000,restarts=5 - Local search with parameters")
+	result = append(result, "  nearestneighbor:randomStarts=100 - Nearest neighbor heuristic with 100 random starts")
 
 	return result
 }
@@ -122,4 +124,27 @@ func (f *SolverFactory) createLocalSearchSolver(args []string) (Solver, error) {
 	}
 
 	return NewLocalSearchSolver(maxIterations, maxNonImproving, randomRestarts), nil
+}
+
+func (f *SolverFactory) createNearestNeighborSolver(args []string) (Solver, error) {
+	randomStarts := 100 // Default value
+
+	// Process arguments
+	for _, arg := range args {
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.ToLower(parts[0])
+		value := parts[1]
+
+		if key == "randomstarts" {
+			if i, err := strconv.Atoi(value); err == nil && i > 0 {
+				randomStarts = i
+			}
+		}
+	}
+
+	return NewNearestNeighborSolver(randomStarts), nil
 }
