@@ -1,8 +1,6 @@
 import os
 import sys
-import ast
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -55,15 +53,6 @@ def clean_solution(solution_str):
 
 
 def analyze_results(csv_path, output_dir):
-    """
-    Analyze and visualize QAP results
-    
-    Args:
-        csv_path (str): Path to the input CSV file
-        output_dir (str): Directory to save output plots
-        matrix_A (numpy.ndarray): Matrix A (distances)
-        matrix_B (numpy.ndarray): Matrix B (flows)
-    """
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
