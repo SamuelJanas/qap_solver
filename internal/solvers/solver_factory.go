@@ -24,6 +24,7 @@ func NewSolverFactory() *SolverFactory {
 	factory.Register("greedy", factory.createGreedySolver)
 	factory.Register("steepest", factory.createSteepestSolver)
 	factory.Register("randomwalk", factory.createRandomWalkSolver)
+	factory.Register("heuristic", factory.createHeuristicSolver)
 
 	return factory
 }
@@ -62,6 +63,7 @@ func (f *SolverFactory) ListAvailable() []string {
 	result = append(result, "  greedy:maxIter=10000,restarts=5 - Greedy search with max iterations and restarts")
 	result = append(result, "  steepest:maxIter=10000,restarts=5 - Steepest ascent search with max iterations and restarts")
 	result = append(result, "  randomwalk:maxIter=10000,restarts=5 - Random walk search with max iterations 10000 and random restarts")
+	result = append(result, "  heuristic:maxIter=10000,restarts=5 - Heuristic search with max iterations 1000 and random restarts:")
 
 	return result
 }
@@ -203,4 +205,8 @@ func (f *SolverFactory) createRandomWalkSolver(args []string) (Solver, error) {
 		}
 	}
 	return NewRandomWalkSolver(maxIterations, randomRestarts), nil
+}
+
+func (f *SolverFactory) createHeuristicSolver(args []string) (Solver, error) {
+	return NewGreedyConstructionSolver(), nil
 }
