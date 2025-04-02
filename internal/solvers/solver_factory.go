@@ -20,7 +20,6 @@ func NewSolverFactory() *SolverFactory {
 
 	// Register the built-in solvers
 	factory.Register("random", factory.createRandomSolver)
-	factory.Register("localsearch", factory.createLocalSearchSolver)
 	factory.Register("greedy", factory.createGreedySolver)
 	factory.Register("steepest", factory.createSteepestSolver)
 	factory.Register("randomwalk", factory.createRandomWalkSolver)
@@ -59,11 +58,10 @@ func (f *SolverFactory) ListAvailable() []string {
 
 	result = append(result, "Available solvers:")
 	result = append(result, "  random:iterations=1000 - Random solution generator with 1000 iterations")
-	result = append(result, "  localsearch:maxIter=10000,maxNonImproving=1000,restarts=5 - Local search with parameters")
-	result = append(result, "  greedy:maxIter=10000,restarts=5 - Greedy search with max iterations and restarts")
-	result = append(result, "  steepest:maxIter=10000,restarts=5 - Steepest ascent search with max iterations and restarts")
-	result = append(result, "  randomwalk:maxIter=10000,restarts=5 - Random walk search with max iterations 10000 and random restarts")
-	result = append(result, "  heuristic:maxIter=10000,restarts=5 - Heuristic search with max iterations 1000 and random restarts:")
+	result = append(result, "  greedy:maxIter=10000 - Greedy search with max iterations")
+	result = append(result, "  steepest:maxIter=10000 - Steepest ascent search with max iterations")
+	result = append(result, "  randomwalk:maxIter=10000 - Random walk search with max iterations 10000")
+	result = append(result, "  heuristic:maxIter=10000 - Heuristic search with max iterations 1000")
 
 	return result
 }
@@ -97,44 +95,8 @@ func (f *SolverFactory) createRandomSolver(args []string) (Solver, error) {
 	return NewRandomSolver(iterations), nil
 }
 
-func (f *SolverFactory) createLocalSearchSolver(args []string) (Solver, error) {
-	// defaults
-	maxIterations := 10000
-	maxNonImproving := 1000
-	randomRestarts := 5
-
-	// Process arguments
-	for _, arg := range args {
-		parts := strings.SplitN(arg, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.ToLower(parts[0])
-		value := parts[1]
-
-		switch key {
-		case "maxiter":
-			if i, err := strconv.Atoi(value); err == nil && i > 0 {
-				maxIterations = i
-			}
-		case "maxnonimproving":
-			if i, err := strconv.Atoi(value); err == nil && i > 0 {
-				maxNonImproving = i
-			}
-		case "restarts":
-			if i, err := strconv.Atoi(value); err == nil && i >= 0 {
-				randomRestarts = i
-			}
-		}
-	}
-
-	return NewLocalSearchSolver(maxIterations, maxNonImproving, randomRestarts), nil
-}
-
 func (f *SolverFactory) createGreedySolver(args []string) (Solver, error) {
 	maxIterations := 10000
-	randomRestarts := 5
 
 	for _, arg := range args {
 		parts := strings.SplitN(arg, "=", 2)
@@ -148,18 +110,13 @@ func (f *SolverFactory) createGreedySolver(args []string) (Solver, error) {
 			if i, err := strconv.Atoi(value); err == nil && i > 0 {
 				maxIterations = i
 			}
-		case "restarts":
-			if i, err := strconv.Atoi(value); err == nil && i >= 0 {
-				randomRestarts = i
-			}
 		}
 	}
-	return NewGreedySolver(maxIterations, randomRestarts), nil
+	return NewGreedySolver(maxIterations), nil
 }
 
 func (f *SolverFactory) createSteepestSolver(args []string) (Solver, error) {
 	maxIterations := 10000
-	randomRestarts := 5
 
 	for _, arg := range args {
 		parts := strings.SplitN(arg, "=", 2)
@@ -173,18 +130,13 @@ func (f *SolverFactory) createSteepestSolver(args []string) (Solver, error) {
 			if i, err := strconv.Atoi(value); err == nil && i > 0 {
 				maxIterations = i
 			}
-		case "restarts":
-			if i, err := strconv.Atoi(value); err == nil && i >= 0 {
-				randomRestarts = i
-			}
 		}
 	}
-	return NewSteepestSolver(maxIterations, randomRestarts), nil
+	return NewSteepestSolver(maxIterations), nil
 }
 
 func (f *SolverFactory) createRandomWalkSolver(args []string) (Solver, error) {
 	maxIterations := 10000
-	randomRestarts := 5
 
 	for _, arg := range args {
 		parts := strings.SplitN(arg, "=", 2)
@@ -198,13 +150,9 @@ func (f *SolverFactory) createRandomWalkSolver(args []string) (Solver, error) {
 			if i, err := strconv.Atoi(value); err == nil && i > 0 {
 				maxIterations = i
 			}
-		case "restarts":
-			if i, err := strconv.Atoi(value); err == nil && i >= 0 {
-				randomRestarts = i
-			}
 		}
 	}
-	return NewRandomWalkSolver(maxIterations, randomRestarts), nil
+	return NewRandomWalkSolver(maxIterations), nil
 }
 
 func (f *SolverFactory) createHeuristicSolver(args []string) (Solver, error) {

@@ -10,15 +10,14 @@ type SteepestSolver struct {
 	RandomRestarts int
 }
 
-func NewSteepestSolver(maxIterations, randomRestarts int) *SteepestSolver {
+func NewSteepestSolver(maxIterations int) *SteepestSolver {
 	return &SteepestSolver{
 		MaxIterations:  maxIterations,
-		RandomRestarts: randomRestarts,
 	}
 }
 
 func (s *SteepestSolver) Name() string {
-	return "SteepestSolver"
+	return "Steepest"
 }
 
 func (s *SteepestSolver) Description() string {
@@ -26,42 +25,34 @@ func (s *SteepestSolver) Description() string {
 }
 
 func (s *SteepestSolver) Solve(instance *qap.QAPInstance) SolverResult {
-	bestSolution := make([]int, instance.Size)
-	bestFitness := -1
 
-	for restart := 0; restart < s.RandomRestarts; restart++ {
-		currentSolution := RandomSolution(instance.Size)
-		currentFitness := qap.CalculateFitness(instance, currentSolution)
+	currentSolution := RandomSolution(instance.Size)
+	currentFitness := qap.CalculateFitness(instance, currentSolution)
 
-		for iter := 0; iter < s.MaxIterations; iter++ {
-			bestNeighbor := make([]int, instance.Size)
-			copy(bestNeighbor, currentSolution)
-			bestNeighborFitness := currentFitness
+	for iter := 0; iter < s.MaxIterations; iter++ {
+		bestNeighbor := make([]int, instance.Size)
+		copy(bestNeighbor, currentSolution)
+		bestNeighborFitness := currentFitness
 
-			for i := 0; i < instance.Size-1; i++ {
-				for j := i + 1; j < instance.Size; j++ {
-					newSolution := make([]int, instance.Size)
-					copy(newSolution, currentSolution)
-					newSolution[i], newSolution[j] = newSolution[j], newSolution[i]
-					newFitness := qap.CalculateFitness(instance, newSolution)
+		for i := 0; i < instance.Size-1; i++ {
+			for j := i + 1; j < instance.Size; j++ {
+				newSolution := make([]int, instance.Size)
+				copy(newSolution, currentSolution)
+				newSolution[i], newSolution[j] = newSolution[j], newSolution[i]
+				newFitness := qap.CalculateFitness(instance, newSolution)
 
-					if newFitness < bestNeighborFitness {
-						copy(bestNeighbor, newSolution)
-						bestNeighborFitness = newFitness
-					}
+				if newFitness < bestNeighborFitness {
+					copy(bestNeighbor, newSolution)
+					bestNeighborFitness = newFitness
 				}
 			}
-			if bestNeighborFitness < currentFitness {
-				copy(currentSolution, bestNeighbor)
-				currentFitness = bestNeighborFitness
-			} else {
-				break
-			}
 		}
-		if bestFitness == -1 || currentFitness < bestFitness {
-			copy(bestSolution, currentSolution)
-			bestFitness = currentFitness
+		if bestNeighborFitness < currentFitness {
+			copy(currentSolution, bestNeighbor)
+			currentFitness = bestNeighborFitness
+		} else {
+			break
 		}
 	}
-	return SolverResult{Solution: bestSolution, Fitness: bestFitness}
+	return SolverResult{Solution: currentSolution, Fitness: currentFitness}
 }

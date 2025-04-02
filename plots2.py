@@ -13,7 +13,10 @@ sns.set_palette("Set2")
 # Define colors for consistency
 COLORS = {
     'Random': '#ff7f0e',  # Orange
-    'LocalSearch': '#1f77b4'  # Blue
+    'Random Walk': '#1f77b4',  # Blue
+    'Greedy': '#2ca02c',  # Green
+    'Steepest': '#d62728',  # Red
+    'Heuristic': '#9467bd'   # Purple
 }
 
 def clean_solution(solution_str):
