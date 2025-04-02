@@ -36,7 +36,7 @@ def load_optimal_solution(instance_name):
                 return None
             
             # First line: instance size and optimal fitness separated by whitespace
-            size, optimal_fitness = map(int, lines[0].strip().split())
+            _, optimal_fitness = map(int, lines[0].strip().split())
             
             # Initialize an empty list for the optimal solution
             optimal_solution = []
@@ -63,8 +63,6 @@ def analyze_qap_results(df):
     for instance in instances:
         best_solution_fitness[instance], best_solutions[instance] = load_optimal_solution(instance)
 
-    print(best_solutions)
-    
     # Add gap to best known solution
     df['GapToBest'] = df.apply(lambda row: (row['FinalFitness'] - best_solution_fitness[row['Instance']]) / best_solution_fitness[row['Instance']] * 100, axis=1)
     
@@ -72,14 +70,16 @@ def analyze_qap_results(df):
     df['ImprovementPercent'] = ((df['InitialFitness'] - df['FinalFitness']) / df['InitialFitness'] * 100)
     
     # Add evaluations per second
-    df['EvalsPerSecond'] = df['Evaluations'] / (df['TimeMs'] / 1000)
+    df['EvalsPerSecond'] = df['Evaluations'] / ((df['TimeMs'] / 1000) + 1e-9)
     
-    return df, best_solution_fitness
+    return df
 
 def plot_gap_to_best(df, output_dir):
     plt.figure(figsize=(14, 8))
     
-    instances = df['Instance'].unique()
+    instance_order = df.groupby("Instance")["GapToBest"].mean().sort_values().index
+    df["Instance"] = pd.Categorical(df["Instance"], categories=instance_order, ordered=True)
+    instances = instance_order
     
     # Calculate mean gap by instance and solver
     gap_data = df.groupby(['Instance', 'Solver'])['GapToBest'].mean().reset_index()
@@ -98,6 +98,7 @@ def plot_gap_to_best(df, output_dir):
     plt.title('Average Gap to Best Known Solution by Solver and Instance')
     plt.xticks(np.arange(len(instances)), instances, rotation=45)
     plt.legend()
+    plt.yscale("log")
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'gap_to_best.png'), dpi=300)
     plt.close()
@@ -147,7 +148,7 @@ def plot_initial_vs_final(df, output_dir):
                 x_norm, 
                 y_norm, 
                 alpha=0.7, 
-                marker='o' if solver == 'Random' else '^', 
+                label=solver,
                 color=COLORS[solver],
             )
     
@@ -159,52 +160,12 @@ def plot_initial_vs_final(df, output_dir):
     plt.savefig(os.path.join(output_dir, 'initial_vs_final_normalized.png'), dpi=300)
     plt.close()
 
-def plot_best_solutions(df, best_solutions, output_dir):
-    plt.figure(figsize=(14, 8))
-    
-    instances = list(best_solutions.keys())
-    best_by_solver = defaultdict(list)
-    
-    for instance in instances:
-        instance_df = df[df['Instance'] == instance]
-        for solver in df['Solver'].unique():
-            solver_df = instance_df[instance_df['Solver'] == solver]
-            best_by_solver[solver].append(solver_df['FinalFitness'].min())
-    
-    # Create grouped bar plot
-    x = np.arange(len(instances))
-    width = 0.35
-    
-    _, ax = plt.subplots(figsize=(14, 8))
-    
-    solvers = list(best_by_solver.keys())
-    for i, solver in enumerate(solvers):
-        offset = (i - len(solvers)/2 + 0.5) * width
-        ax.bar(x + offset, best_by_solver[solver], width, label=solver, color=COLORS[solver])
-    
-    ax.set_ylabel('Best Fitness Found')
-    ax.set_title('Best Solution Found for Each Instance by Solver')
-    ax.set_xticks(x)
-    ax.set_xticklabels(instances, rotation=45)
-    ax.legend()
-    
-    # Add text with the values
-    for i, solver in enumerate(solvers):
-        offset = (i - len(solvers)/2 + 0.5) * width
-        for j, v in enumerate(best_by_solver[solver]):
-            ax.text(j + offset, v, f"{v:.0f}", 
-                   ha='center', va='bottom', fontsize=8, rotation=90)
-    
-    plt.tight_layout()
-    plt.yscale("log")
-    plt.savefig(os.path.join(output_dir, 'best_solutions.png'), dpi=300)
-    plt.close()
-
 def plot_time_efficiency(df, output_dir):
     plt.figure(figsize=(14, 8))
     
     # Group by instance and solver to get mean values
-    perf_data = df.groupby(['Instance', 'Solver'])[['TimeMs', 'Evaluations', 'EvalsPerSecond']].mean().reset_index()
+    perf_data = df.groupby(['Instance', 'Solver'])[['TimeMs', 'Evaluations', 'EvalsPerSecond', 'FinalFitness', 'InitialFitness']].mean().reset_index()
+    df['Efficiency'] = df['EvalsPerSecond'] / (df['FinalFitness'] + 1e-9)
     
     # Create bar plot for evaluations per second by instance and solver
     instances = df['Instance'].unique()
@@ -264,6 +225,46 @@ def plot_time_efficiency(df, output_dir):
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'execution_time.png'), dpi=300)
+    plt.close()
+
+
+    plt.figure(figsize=(14, 8))
+    
+    perf_data = df.groupby(['Instance', 'Solver'])['FinalFitness'].min().reset_index()
+    for i, solver in enumerate(solvers):
+        solver_data = perf_data[perf_data['Solver'] == solver]
+        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
+        
+        plt.bar(x_positions, solver_data['FinalFitness'], width=width, label=solver, color=COLORS[solver])
+    
+    plt.xlabel('Instance')
+    plt.ylabel('Fitness')
+    plt.title('Best final fitness by Instance and Solver')
+    plt.xticks(np.arange(len(instances)), instances, rotation=45)
+    plt.yscale('log')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'best_final.png'), dpi=300)
+    plt.close()
+
+    perf_data = df.groupby(['Instance', 'Solver'])[['Efficiency']].mean().reset_index()
+
+    plt.figure(figsize=(14, 8))
+ 
+    for i, solver in enumerate(solvers):
+        solver_data = perf_data[perf_data['Solver'] == solver]
+        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
+         
+        plt.bar(x_positions, solver_data['Efficiency'], width=width, label=solver, color=COLORS[solver])
+     
+    plt.xlabel('Instance')
+    plt.ylabel('Efficiency (EvalsPerSecond / FinalFitness)')
+    plt.title('Overall Efficiency by Instance and Solver')
+    plt.xticks(np.arange(len(instances)), instances, rotation=45)
+    plt.yscale('log')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'efficiency.png'), dpi=300)
     plt.close()
 
 def plot_improvement_distribution(df, output_dir):
@@ -334,12 +335,12 @@ def main(csv_path):
     os.makedirs(output_dir, exist_ok=True)
     
     df["Solution"] = df["Solution"].apply(clean_solution)
-    df, best_solutions = analyze_qap_results(df)
+    df = analyze_qap_results(df)
+
     
     # Create visualizations
     plot_gap_to_best(df, output_dir)
     plot_initial_vs_final(df, output_dir)
-    plot_best_solutions(df, best_solutions, output_dir)
     plot_time_efficiency(df, output_dir)
     plot_improvement_distribution(df, output_dir)
     
