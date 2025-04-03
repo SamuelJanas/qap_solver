@@ -130,6 +130,7 @@ def plot_initial_vs_final(df, output_dir):
     # Create one combined plot with normalized values for comparison
     plt.figure(figsize=(12, 10))
     
+    added_solvers = set()
     for instance in instances:
         instance_df = df[df['Instance'] == instance]
         
@@ -144,13 +145,22 @@ def plot_initial_vs_final(df, output_dir):
             
             x_norm = (solver_df['InitialFitness'] - min_initial) / (max_initial - min_initial) if max_initial > min_initial else solver_df['InitialFitness'] / max_initial
             y_norm = (solver_df['FinalFitness'] - min_final) / (max_final - min_final) if max_final > min_final else solver_df['FinalFitness'] / max_final
-            plt.scatter(
-                x_norm, 
-                y_norm, 
-                alpha=0.7, 
-                label=solver,
-                color=COLORS[solver],
-            )
+            if solver not in added_solvers:
+                plt.scatter(
+                    x_norm, 
+                    y_norm, 
+                    alpha=0.7, 
+                    label=solver,
+                    color=COLORS[solver],
+                )
+                added_solvers.add(solver)
+            else:
+                plt.scatter(
+                    x_norm, 
+                    y_norm, 
+                    alpha=0.7, 
+                    color=COLORS[solver],
+                )
     
     plt.xlabel('Normalized Initial Fitness')
     plt.ylabel('Normalized Final Fitness')
