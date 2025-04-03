@@ -76,7 +76,7 @@ def analyze_qap_results(df):
 
 def plot_gap_to_best(df, output_dir):
     plt.figure(figsize=(14, 8))
-    
+    #TODO change order i guess?
     instance_order = df.groupby("Instance")["GapToBest"].mean().sort_values().index
     df["Instance"] = pd.Categorical(df["Instance"], categories=instance_order, ordered=True)
     instances = instance_order
@@ -86,17 +86,28 @@ def plot_gap_to_best(df, output_dir):
     
     # For each solver, create a set of bars
     solvers = df['Solver'].unique()
-    width = 0.8 / len(solvers)
+    width = 5 / len(solvers)
     
-    for i, solver in enumerate(solvers):
-        solver_data = gap_data[gap_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
-        plt.bar(x_positions, solver_data['GapToBest'], width=width, label=solver, color=COLORS[solver])
+    offset = 0
+    for instance in instances:
+        instance_data = gap_data[gap_data['Instance'] == instance]
+        
+        # Sort solvers within the instance by GapToBest
+        instance_data = instance_data.sort_values(by="GapToBest", ascending=True)
+        
+        # Now plot for each solver in the sorted instance
+        for i, solver in enumerate(instance_data['Solver']):
+            solver_data = instance_data[instance_data['Solver'] == solver]
+            x_position = offset + i
+            
+            plt.bar(x_position, solver_data['GapToBest'].values[0], width=width, label=solver if offset == 0 else "", color=COLORS[solver])
+        
+        offset += len(instance_data) + 1
         
     plt.xlabel('Instance')
     plt.ylabel('Gap to Best Known Solution (%)')
     plt.title('Average Gap to Best Known Solution by Solver and Instance')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
+    plt.xticks((np.arange(len(instances))*(len(solvers)+1))+(len(solvers)//2), instances, rotation=45)
     plt.legend()
     plt.yscale("log")
     plt.tight_layout()
@@ -172,110 +183,69 @@ def plot_initial_vs_final(df, output_dir):
 
 def plot_time_efficiency(df, output_dir):
     plt.figure(figsize=(14, 8))
-    
-    # Group by instance and solver to get mean values
-    perf_data = df.groupby(['Instance', 'Solver'])[['TimeMs', 'Evaluations', 'EvalsPerSecond', 'FinalFitness', 'InitialFitness']].mean().reset_index()
+
     df['Efficiency'] = df['EvalsPerSecond'] / (df['FinalFitness'] + 1e-9)
-    
-    # Create bar plot for evaluations per second by instance and solver
     instances = df['Instance'].unique()
     solvers = df['Solver'].unique()
-    
-    width = 0.8 / len(solvers)
-    
-    for i, solver in enumerate(solvers):
-        solver_data = perf_data[perf_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
-        
-        plt.bar(x_positions, solver_data['EvalsPerSecond'], width=width, label=solver, color=COLORS[solver])
-    
-    plt.xlabel('Instance')
-    plt.ylabel('Evaluations per Second')
-    plt.title('Algorithm Efficiency: Evaluations per Second')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
-    plt.yscale('log')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'evaluations_per_second.png'), dpi=300)
-    plt.close()
-    
-    # Plot evaluations count
-    plt.figure(figsize=(14, 8))
-    
-    for i, solver in enumerate(solvers):
-        solver_data = perf_data[perf_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
-        
-        plt.bar(x_positions, solver_data['Evaluations'], width=width, label=solver, color=COLORS[solver])
-    
-    plt.xlabel('Instance')
-    plt.ylabel('Number of Evaluations')
-    plt.title('Number of Function Evaluations by Instance and Solver')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
-    plt.yscale('log')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'evaluations_count.png'), dpi=300)
-    plt.close()
-    
-    # Plot time spent
-    plt.figure(figsize=(14, 8))
-    
-    for i, solver in enumerate(solvers):
-        solver_data = perf_data[perf_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
-        
-        plt.bar(x_positions, solver_data['TimeMs'], width=width, label=solver, color=COLORS[solver])
-    
-    plt.xlabel('Instance')
-    plt.ylabel('Time (ms)')
-    plt.title('Execution Time by Instance and Solver')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
-    plt.yscale('log')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'execution_time.png'), dpi=300)
-    plt.close()
+    width = 5 / len(solvers)
 
+    metrics = {
+        "evaluations_per_second.png": "EvalsPerSecond",
+        "evaluations_count.png": "Evaluations",
+        "execution_time.png": "TimeMs",
+        "best_final.png": "FinalFitness",
+        "efficiency.png": "Efficiency"
+    }
 
-    plt.figure(figsize=(14, 8))
-    
-    perf_data = df.groupby(['Instance', 'Solver'])['FinalFitness'].min().reset_index()
-    for i, solver in enumerate(solvers):
-        solver_data = perf_data[perf_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
+    titles = {
+        "evaluations_per_second.png": "Algorithm Efficiency: Evaluations per Second",
+        "evaluations_count.png": "Number of Function Evaluations by Instance and Solver",
+        "execution_time.png": "Execution Time by Instance and Solver",
+        "best_final.png": "Best Final Fitness by Instance and Solver",
+        "efficiency.png": "Overall Efficiency by Instance and Solver"
+    }
+
+    y_labels = {
+        "evaluations_per_second.png": "Evaluations per Second",
+        "evaluations_count.png": "Number of Evaluations",
+        "execution_time.png": "Time (ms)",
+        "best_final.png": "Fitness",
+        "efficiency.png": "Efficiency (EvalsPerSecond / FinalFitness)"
+    }
+
+    for filename, metric in metrics.items():
+        plt.figure(figsize=(14, 8))
+
+        x_labels = []
+        x_positions = []
+        all_positions = []
         
-        plt.bar(x_positions, solver_data['FinalFitness'], width=width, label=solver, color=COLORS[solver])
-    
-    plt.xlabel('Instance')
-    plt.ylabel('Fitness')
-    plt.title('Best final fitness by Instance and Solver')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
-    plt.yscale('log')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'best_final.png'), dpi=300)
-    plt.close()
+        offset = 0
+        for instance in sorted(instances):
+            instance_data = df[df["Instance"] == instance].groupby("Solver")[metric].mean().reset_index()
+            instance_data = instance_data.sort_values(by=metric)  
+            
+            x_labels.extend(instance_data["Solver"].tolist())  
+            x_pos = np.arange(len(instance_data)) + offset
+            x_positions.extend(x_pos)
+            all_positions.append(x_pos)
+            
+            for i, solver in enumerate(instance_data["Solver"]):
+                value = instance_data[instance_data["Solver"] == solver][metric].values[0]
+                plt.bar(x_pos[i], value, width=width, label=solver if offset == 0 else "", color=COLORS[solver])
 
-    perf_data = df.groupby(['Instance', 'Solver'])[['Efficiency']].mean().reset_index()
+            offset += len(instance_data) + 1 
 
-    plt.figure(figsize=(14, 8))
- 
-    for i, solver in enumerate(solvers):
-        solver_data = perf_data[perf_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
-         
-        plt.bar(x_positions, solver_data['Efficiency'], width=width, label=solver, color=COLORS[solver])
-     
-    plt.xlabel('Instance')
-    plt.ylabel('Efficiency (EvalsPerSecond / FinalFitness)')
-    plt.title('Overall Efficiency by Instance and Solver')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
-    plt.yscale('log')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, 'efficiency.png'), dpi=300)
-    plt.close()
+        plt.xlabel('Instance - Solver')
+        plt.ylabel(y_labels[filename])
+        plt.title(titles[filename])
+        plt.xticks((np.arange(len(instances))*(len(solvers)+1))+(len(solvers)//2), instances, rotation=45)
+        plt.yscale('log')
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, filename), dpi=300)
+        plt.close()
+
 
 def plot_improvement_distribution(df, output_dir):
     plt.figure(figsize=(12, 8))
@@ -302,17 +272,28 @@ def plot_improvement_distribution(df, output_dir):
     # For each solver, create a set of bars
     instances = df['Instance'].unique()
     solvers = df['Solver'].unique()
-    width = 0.8 / len(solvers)
+    width = 5 / len(solvers)
     
-    for i, solver in enumerate(solvers):
-        solver_data = imp_data[imp_data['Solver'] == solver]
-        x_positions = np.arange(len(instances)) + (i - len(solvers)/2 + 0.5) * width
-        plt.bar(x_positions, solver_data['ImprovementPercent'], width=width, label=solver, color=COLORS[solver])
+    for instance in sorted(instances):
+        instance_data = imp_data[imp_data['Instance'] == instance]
+        
+        # Sort solvers within the instance by ImprovementPercent
+        instance_data = instance_data.sort_values(by="ImprovementPercent", ascending=True)
+        
+        # Plot each solver's improvement
+        for i, solver in enumerate(instance_data['Solver']):
+            solver_data = instance_data[instance_data['Solver'] == solver]
+            x_position = offset + i 
+            
+            plt.bar(x_position, solver_data['ImprovementPercent'].values[0], width=width, label=solver if offset == 0 else "", color=COLORS[solver])
+        
+        offset += len(instance_data) + 1 
     
     plt.xlabel('Instance')
     plt.ylabel('Average Improvement (%)')
     plt.title('Average Solution Improvement by Instance and Solver')
-    plt.xticks(np.arange(len(instances)), instances, rotation=45)
+    plt.xticks((np.arange(len(instances))*(len(solvers)+1))+(len(solvers)//2), instances, rotation=45)
+
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'improvement_by_instance.png'), dpi=300)
