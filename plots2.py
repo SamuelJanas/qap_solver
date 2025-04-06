@@ -301,6 +301,7 @@ def create_summary_table(df, output_dir):
         'FinalFitness': ['mean', 'min'],
         'TimeMs': 'mean',
         'Evaluations': 'mean',
+        'Steps': 'mean',
         'EvalsPerSecond': 'mean',
         'ImprovementPercent': 'mean',
         'GapToBest': 'mean'
