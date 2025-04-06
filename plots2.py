@@ -295,6 +295,8 @@ def create_summary_table(df, output_dir):
     """
     Create a summary table with key metrics
     """
+
+    df["Efficiency"] = df["EvalsPerSecond"] / (df["FinalFitness"] + 1e-9)
     # Group by instance and solver
     summary = df.groupby(['Solver']).agg({
         'InitialFitness': 'mean',
@@ -304,7 +306,8 @@ def create_summary_table(df, output_dir):
         'Steps': 'mean',
         'EvalsPerSecond': 'mean',
         'ImprovementPercent': 'mean',
-        'GapToBest': 'mean'
+        'GapToBest': 'mean',
+            'Efficiency': 'mean',
     }).reset_index()
     
     # Save to CSV
