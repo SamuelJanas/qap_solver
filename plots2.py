@@ -76,40 +76,36 @@ def analyze_qap_results(df):
 
 def plot_gap_to_best(df, output_dir):
     plt.figure(figsize=(14, 8))
-    #TODO change order i guess?
+
+    # Order instances by mean GapToBest
     instance_order = df.groupby("Instance")["GapToBest"].mean().sort_values().index
     df["Instance"] = pd.Categorical(df["Instance"], categories=instance_order, ordered=True)
-    instances = instance_order
-    
+    instances = list(instance_order)
+
     # Calculate mean gap by instance and solver
     gap_data = df.groupby(['Instance', 'Solver'])['GapToBest'].mean().reset_index()
-    
-    # For each solver, create a set of bars
     solvers = df['Solver'].unique()
-    width = 5 / len(solvers)
-    
-    offset = 0
-    for instance in instances:
-        instance_data = gap_data[gap_data['Instance'] == instance]
-        
-        # Sort solvers within the instance by GapToBest
-        instance_data = instance_data.sort_values(by="GapToBest", ascending=True)
-        
-        # Now plot for each solver in the sorted instance
-        for i, solver in enumerate(instance_data['Solver']):
-            solver_data = instance_data[instance_data['Solver'] == solver]
-            x_position = offset + i
-            
-            plt.bar(x_position, solver_data['GapToBest'].values[0], width=width, label=solver if offset == 0 else "", color=COLORS[solver])
-        
-        offset += len(instance_data) + 1
-        
+
+    for solver in solvers:
+        y_vals = []
+        for instance in instances:
+            filtered = gap_data[(gap_data["Instance"] == instance) & (gap_data["Solver"] == solver)]
+            if not filtered.empty:
+                value = filtered["GapToBest"].values[0]
+                y_vals.append(value if value>0 else value + 1e-2)
+            else:
+                y_vals.append(np.nan)
+
+        x = np.arange(len(instances))
+        plt.scatter(x, y_vals, label=solver, color=COLORS[solver])
+        plt.plot(x, y_vals, linestyle='--', color=COLORS[solver])
+
     plt.xlabel('Instance')
     plt.ylabel('Gap to Best Known Solution (%)')
     plt.title('Average Gap to Best Known Solution by Solver and Instance')
-    plt.xticks((np.arange(len(instances))*(len(solvers)+1))+(len(solvers)//2), instances, rotation=45)
+    plt.xticks(np.arange(len(instances)), instances, rotation=45)
+    plt.yscale("log") 
     plt.legend()
-    plt.yscale("log")
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, 'gap_to_best.png'), dpi=300)
     plt.close()
@@ -216,36 +212,31 @@ def plot_time_efficiency(df, output_dir):
     for filename, metric in metrics.items():
         plt.figure(figsize=(14, 8))
 
-        x_labels = []
-        x_positions = []
-        all_positions = []
-        
-        offset = 0
-        for instance in sorted(instances):
-            instance_data = df[df["Instance"] == instance].groupby("Solver")[metric].mean().reset_index()
-            instance_data = instance_data.sort_values(by=metric)  
-            
-            x_labels.extend(instance_data["Solver"].tolist())  
-            x_pos = np.arange(len(instance_data)) + offset
-            x_positions.extend(x_pos)
-            all_positions.append(x_pos)
-            
-            for i, solver in enumerate(instance_data["Solver"]):
-                value = instance_data[instance_data["Solver"] == solver][metric].values[0]
-                plt.bar(x_pos[i], value, width=width, label=solver if offset == 0 else "", color=COLORS[solver])
+        for solver in solvers:
+            y_vals = []
+            for instance in instances:
+                filtered = df[(df["Solver"] == solver) & (df["Instance"] == instance)]
+                if not filtered.empty:
+                    value = filtered[metric].mean()
+                    y_vals.append(value + 1e-2)
+                else:
+                    y_vals.append(0)
 
-            offset += len(instance_data) + 1 
 
-        plt.xlabel('Instance - Solver')
+            x = np.arange(len(instances))
+            plt.scatter(x, y_vals, label=solver, color=COLORS[solver])
+            plt.plot(x, y_vals, linestyle='--', color=COLORS[solver])
+
+        plt.xlabel('Instance')
         plt.ylabel(y_labels[filename])
         plt.title(titles[filename])
-        plt.xticks((np.arange(len(instances))*(len(solvers)+1))+(len(solvers)//2), instances, rotation=45)
+        plt.xticks(np.arange(len(instances)), instances, rotation=45)
         plt.yscale('log')
         plt.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, filename), dpi=300)
         plt.close()
-
+        
 
 def plot_improvement_distribution(df, output_dir):
     plt.figure(figsize=(12, 8))
@@ -273,6 +264,7 @@ def plot_improvement_distribution(df, output_dir):
     instances = df['Instance'].unique()
     solvers = df['Solver'].unique()
     width = 5 / len(solvers)
+    offset = 0
     
     for instance in sorted(instances):
         instance_data = imp_data[imp_data['Instance'] == instance]
