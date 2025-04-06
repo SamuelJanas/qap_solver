@@ -296,7 +296,7 @@ def create_summary_table(df, output_dir):
     Create a summary table with key metrics
     """
     # Group by instance and solver
-    summary = df.groupby(['Instance', 'Solver']).agg({
+    summary = df.groupby(['Solver']).agg({
         'InitialFitness': 'mean',
         'FinalFitness': ['mean', 'min'],
         'TimeMs': 'mean',
