@@ -25,4 +25,4 @@ go.work.sum
 .env
 instances_small
 selected_instance
-results
+results*
