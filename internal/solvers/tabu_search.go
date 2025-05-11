@@ -2,9 +2,10 @@ package solvers
 
 import (
 	"math/rand"
+	"qap_solver/internal/metrics"
 	"qap_solver/internal/qap"
 	"sort"
-	// "time"
+	"time"
 )
 
 type TabuSearchSolver struct {
@@ -117,6 +118,131 @@ func (s *TabuSearchSolver) Solve(instance *qap.QAPInstance) SolverResult {
 		} else {
 			noImprovementCounter++
 		}
+	}
+
+	return SolverResult{
+		Solution: best,
+		Fitness:  bestFitness,
+	}
+}
+
+func (s *TabuSearchSolver) SolveWithMetrics(
+	instance *qap.QAPInstance,
+	metricsCollector *metrics.MetricsCollector,
+	instanceName string,
+	runNumber int,
+) SolverResult {
+	startTime := time.Now()
+
+	n := instance.Size
+	maxNoImprovement := s.P * n
+	tabuTenure := n / 2
+	tabuList := make([][]int, n)
+	for i := range tabuList {
+		tabuList[i] = make([]int, n)
+	}
+
+	current := RandomSolution(n)
+	currentFitness := qap.CalculateFitness(instance, current)
+
+	best := make([]int, n)
+	copy(best, current)
+	bestFitness := currentFitness
+
+	initialFitness := currentFitness
+	initialSolution := make([]int, n)
+	copy(initialSolution, current)
+
+	noImprovementCounter := 0
+	iteration := 0
+	totalSteps := 0
+	totalEvaluations := 0
+	totalSolutionsChecked := 0
+
+	for noImprovementCounter < maxNoImprovement {
+		iteration++
+		var candidateMoves []move
+
+		possibleSwaps := allSwaps(n)
+		sampleSize := len(possibleSwaps) / 5
+		rand.Shuffle(len(possibleSwaps), func(i, j int) {
+			possibleSwaps[i], possibleSwaps[j] = possibleSwaps[j], possibleSwaps[i]
+		})
+		sampledSwaps := possibleSwaps[:sampleSize]
+
+		for _, sw := range sampledSwaps {
+			i, j := sw[0], sw[1]
+
+			newSolution := make([]int, n)
+			copy(newSolution, current)
+			newSolution[i], newSolution[j] = newSolution[j], newSolution[i]
+
+			newFitness := qap.CalculateFitness(instance, newSolution)
+			totalEvaluations++
+			totalSolutionsChecked++
+
+			isTabu := tabuList[i][current[j]] > iteration || tabuList[j][current[i]] > iteration
+			aspiration := newFitness < bestFitness
+
+			candidateMoves = append(candidateMoves, move{i, j, newFitness, isTabu, aspiration})
+		}
+
+		// Sort candidate moves by newFitness ascending
+		sort.Slice(candidateMoves, func(i, j int) bool {
+			return candidateMoves[i].newFitness < candidateMoves[j].newFitness
+		})
+
+		// Pick top 20%
+		topSize := len(candidateMoves) / 5
+		if topSize == 0 {
+			topSize = 1
+		}
+		candidateMoves = candidateMoves[:topSize]
+
+		var chosen move
+		for _, m := range candidateMoves {
+			if !m.isTabu || m.aspiration {
+				chosen = m
+				break
+			}
+		}
+		if chosen == (move{}) && len(candidateMoves) > 0 {
+			chosen = candidateMoves[0]
+		}
+
+		// Apply the move
+		i, j := chosen.i, chosen.j
+		current[i], current[j] = current[j], current[i]
+		currentFitness = chosen.newFitness
+
+		tabuList[i][current[i]] = iteration + tabuTenure
+		tabuList[j][current[j]] = iteration + tabuTenure
+		totalSteps++
+
+		if currentFitness < bestFitness {
+			copy(best, current)
+			bestFitness = currentFitness
+			noImprovementCounter = 0
+		} else {
+			noImprovementCounter++
+		}
+	}
+
+	elapsedTime := time.Since(startTime)
+
+	if metricsCollector != nil {
+		metricsCollector.AddRunMetrics(metrics.RunMetrics{
+			InstanceName:     instanceName,
+			SolverName:       s.Name(),
+			Run:              runNumber,
+			InitialFitness:   initialFitness,
+			FinalFitness:     bestFitness,
+			TimeElapsed:      elapsedTime,
+			StepsCount:       totalSteps,
+			EvaluationsCount: totalEvaluations,
+			SolutionsChecked: totalSolutionsChecked,
+			Solution:         best,
+		})
 	}
 
 	return SolverResult{
