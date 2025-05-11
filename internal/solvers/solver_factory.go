@@ -25,6 +25,7 @@ func NewSolverFactory() *SolverFactory {
 	factory.Register("randomwalk", factory.createRandomWalkSolver)
 	factory.Register("heuristic", factory.createHeuristicSolver)
 	factory.Register("simanneal", factory.createSimulatedAnnealingSolver)
+	factory.Register("tabu", factory.createTabuSearchSolver)
 
 	return factory
 }
@@ -64,6 +65,7 @@ func (f *SolverFactory) ListAvailable() []string {
 	result = append(result, "  randomwalk:maxIter=10000 - Random walk search with max iterations 10000")
 	result = append(result, "  heuristic:maxIter=10000 - Heuristic search with max iterations 1000")
 	result = append(result, "  simanneal:alpha=0.9,p=10,acceptance=0.01 - Simulated Annealing with cooling schedule")
+	result = append(result, "  tabu:p=10 - Tabu Search with elite list and aspiration criteria")
 
 	return result
 }
@@ -189,4 +191,23 @@ func (f *SolverFactory) createSimulatedAnnealingSolver(args []string) (Solver, e
 		}
 	}
 	return NewSimulatedAnnealingSolver(alpha, p, acceptanceProb), nil
+}
+
+func (f *SolverFactory) createTabuSearchSolver(args []string) (Solver, error) {
+	p := 10 // default value
+
+	for _, arg := range args {
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		key := strings.ToLower(parts[0])
+		value := parts[1]
+		if key == "p" {
+			if val, err := strconv.Atoi(value); err == nil && val > 0 {
+				p = val
+			}
+		}
+	}
+	return NewTabuSearchSolver(p), nil
 }
